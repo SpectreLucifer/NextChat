@@ -42,7 +42,7 @@ export const CN_MASKS: BuiltinMask[] = [
     createdAt: 1699899480500,
   },
   {
-    avatar: "1f40b",
+    avatar: "gpt-bot",
     name: "DeepSeek R1",
     context: [
       {
@@ -102,7 +102,7 @@ export const CN_MASKS: BuiltinMask[] = [
     createdAt: 1699899480501,
   },
   {
-    avatar: "1f40b",
+    avatar: "gpt-bot",
     name: "DeepSeek R1 unlock",
     context: [
       {
