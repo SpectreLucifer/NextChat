@@ -20,6 +20,7 @@ import {
   DEFAULT_MODELS,
   DEFAULT_SYSTEM_TEMPLATE,
   GEMINI_SUMMARIZE_MODEL,
+  DEEPSEEK_SUMMARIZE_MODEL,
   KnowledgeCutOffDate,
   MCP_TOOLS_TEMPLATE,
   ServiceProvider,
@@ -34,7 +35,7 @@ import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
 import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
-import { executeMcpAction, getAllTools } from "../mcp/actions";
+import { executeMcpAction, getAllTools, isMcpEnabled } from "../mcp/actions";
 import { extractMcpJson, isMcpJson } from "../mcp/utils";
 import { getServerSideConfig } from "../config/server";
 
@@ -143,7 +144,10 @@ function getSummarizeModel(
   }
   if (currentModel.startsWith("gemini")) {
     return [GEMINI_SUMMARIZE_MODEL, ServiceProvider.Google];
+  } else if (currentModel.startsWith("deepseek-")) {
+    return [DEEPSEEK_SUMMARIZE_MODEL, ServiceProvider.DeepSeek];
   }
+
   return [currentModel, providerName];
 }
 
@@ -610,11 +614,12 @@ export const useChatStore = createPersistStore(
           (session.mask.modelConfig.model.startsWith("gpt-") ||
             session.mask.modelConfig.model.startsWith("chatgpt-"));
 
-        const mcpSystemPrompt = await getMcpSystemPrompt();
+        const mcpEnabled = await isMcpEnabled();
+        const mcpSystemPrompt = mcpEnabled ? await getMcpSystemPrompt() : "";
 
         var systemPrompts: ChatMessage[] = [];
+
         if (shouldInjectSystemPrompts) {
-          // 当启用系统提示词时，将MCP提示词附加到系统提示词后
           systemPrompts = [
             createMessage({
               role: "system",
@@ -625,14 +630,20 @@ export const useChatStore = createPersistStore(
                 }) + mcpSystemPrompt,
             }),
           ];
-        } else if (mcpSystemPrompt) {
-          // 当只有MCP启用时，只添加MCP系统提示词
+        } else if (mcpEnabled) {
           systemPrompts = [
             createMessage({
               role: "system",
               content: mcpSystemPrompt,
             }),
           ];
+        }
+
+        if (shouldInjectSystemPrompts || mcpEnabled) {
+          console.log(
+            "[Global System Prompt] ",
+            systemPrompts.at(0)?.content ?? "empty",
+          );
         }
 
         const memoryPrompt = get().getMemoryPrompt();
@@ -874,6 +885,8 @@ export const useChatStore = createPersistStore(
 
       /** check if the message contains MCP JSON and execute the MCP action */
       checkMcpJson(message: ChatMessage) {
+        const mcpEnabled = isMcpEnabled();
+        if (!mcpEnabled) return;
         const content = getMessageTextContent(message);
         if (isMcpJson(content)) {
           try {
