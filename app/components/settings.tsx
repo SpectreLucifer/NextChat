@@ -9,7 +9,6 @@ import CopyIcon from "../icons/copy.svg";
 import ClearIcon from "../icons/clear.svg";
 import LoadingIcon from "../icons/three-dots.svg";
 import EditIcon from "../icons/edit.svg";
-import FireIcon from "../icons/fire.svg";
 import EyeIcon from "../icons/eye.svg";
 import DownloadIcon from "../icons/download.svg";
 import UploadIcon from "../icons/upload.svg";
@@ -19,7 +18,6 @@ import ConfirmIcon from "../icons/confirm.svg";
 import ConnectionIcon from "../icons/connection.svg";
 import CloudSuccessIcon from "../icons/cloud-success.svg";
 import CloudFailIcon from "../icons/cloud-fail.svg";
-import { trackSettingsPageGuideToCPaymentClick } from "../utils/auth-settings-events";
 import {
   Input,
   List,
@@ -71,7 +69,6 @@ import {
   UPDATE_URL,
   Stability,
   Iflytek,
-  SAAS_CHAT_URL,
   ChatGLM,
   DeepSeek,
 } from "../constant";
@@ -692,7 +689,7 @@ export function Settings() {
     </ListItem>
   );
 
-  const saasStartComponent = (
+  /*const saasStartComponent = (
     <ListItem
       className={styles["subtitle-button"]}
       title={
@@ -715,7 +712,9 @@ export function Settings() {
         }}
       />
     </ListItem>
-  );
+  );*/
+
+  //此处修改#5
 
   const useCustomConfigComponent = // Conditionally render the following ListItem based on clientConfig.isApp
     !clientConfig?.isApp && ( // only show if isApp is false
@@ -1734,7 +1733,8 @@ export function Settings() {
         </List>
 
         <List id={SlotID.CustomModel}>
-          {saasStartComponent}
+          {/*saasStartComponent*/}
+          {/*此处修改#6*/}
           {accessCodeComponent}
 
           {!accessStore.hideUserApiKey && (

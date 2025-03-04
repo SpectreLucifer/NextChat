@@ -5,7 +5,6 @@ import { createPersistStore } from "../utils/store";
 import { getClientConfig } from "../config/client";
 import yaml from "js-yaml";
 import { adapter, getOperationId } from "../utils";
-import { useAccessStore } from "./access";
 
 const isApp = getClientConfig()?.isApp !== false;
 
@@ -20,6 +19,7 @@ export type Plugin = {
   authLocation?: string;
   authHeader?: string;
   authToken?: string;
+  usingProxy?: boolean;
 };
 
 export type FunctionToolItem = {
@@ -49,24 +49,17 @@ export const FunctionToolService = {
       plugin?.authType == "basic"
         ? `Basic ${plugin?.authToken}`
         : plugin?.authType == "bearer"
-        ? `Bearer ${plugin?.authToken}`
+        ? ` Bearer ${plugin?.authToken}`
         : plugin?.authToken;
     const authLocation = plugin?.authLocation || "header";
     const definition = yaml.load(plugin.content) as any;
     const serverURL = definition?.servers?.[0]?.url;
-    const baseURL = !isApp ? "/api/proxy" : serverURL;
+    const baseURL = !!plugin?.usingProxy ? "/api/proxy" : serverURL;
     const headers: Record<string, string | undefined> = {
-      "X-Base-URL": !isApp ? serverURL : undefined,
+      "X-Base-URL": !!plugin?.usingProxy ? serverURL : undefined,
     };
     if (authLocation == "header") {
       headers[headerName] = tokenValue;
-    }
-    // try using openaiApiKey for Dalle3 Plugin.
-    if (!tokenValue && plugin.id === "dalle3") {
-      const openaiApiKey = useAccessStore.getState().openaiApiKey;
-      if (openaiApiKey) {
-        headers[headerName] = `Bearer ${openaiApiKey}`;
-      }
     }
     const api = new OpenAPIClientAxios({
       definition: yaml.load(plugin.content) as any,
@@ -165,8 +158,387 @@ export const createEmptyPlugin = () =>
     createdAt: Date.now(),
   }) as Plugin;
 
+const PREDEFINED_PLUGINS: Record<string, Plugin> = {
+  chatPdfGpt: {
+    id: "chatPdfGpt",
+    createdAt: Date.now(),
+    title: "ChatPDF，允许AI从给定的链接读取PDF",
+    version: "v1",
+    content: JSON.stringify({
+      openapi: "3.1.0",
+      info: {
+        description: "A GPT that allows the user to read data from a link.",
+        title: "Chat PDF GPT",
+        version: "v1",
+      },
+      servers: [
+        {
+          url: "https://gpt.chatpdf.aidocmaker.com",
+        },
+      ],
+      paths: {
+        "/read_url": {
+          post: {
+            description:
+              "Allows for reading the contents of an URL link, including PDF/DOC/DOCX/PPT/CSV/XLS/XLSX/HTML content, Google Drive, Dropbox, OneDrive, aidocmaker.com docs. Always wrap image URLs from the response field `z1_image_urls` in Markdown, where each image has a ## DESCRIPTION.",
+            operationId: "ChatPDFReadRrl",
+            requestBody: {
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/ReadDocV2Request",
+                  },
+                },
+              },
+              required: true,
+            },
+            responses: {
+              "200": {
+                content: {
+                  "application/json": {
+                    schema: {},
+                  },
+                },
+                description: "Successful Response",
+              },
+              "422": {
+                content: {
+                  "application/json": {
+                    schema: {
+                      $ref: "#/components/schemas/HTTPValidationError",
+                    },
+                  },
+                },
+                description: "Validation Error",
+              },
+            },
+            summary: "Read the contents of an URL link",
+            "x-openai-isConsequential": false,
+          },
+        },
+      },
+      components: {
+        schemas: {
+          HTTPValidationError: {
+            properties: {
+              detail: {
+                items: {
+                  $ref: "#/components/schemas/ValidationError",
+                },
+                title: "Detail",
+                type: "array",
+              },
+            },
+            title: "HTTPValidationError",
+            type: "object",
+          },
+          ReadDocV2Request: {
+            properties: {
+              f1_http_url: {
+                description:
+                  "User will pass a HTTPS or HTTP url to a file so that the file contents can be read.",
+                title: "F1 Http Url",
+                type: "string",
+              },
+              f2_query: {
+                default: "",
+                description:
+                  "User will pass a query string to fetch relevant sections from the contents. It will be used for sentence-level similarity search on the document based on embeddings.",
+                title: "F2 Query",
+                type: "string",
+              },
+              f3_selected_pages: {
+                default: [],
+                description:
+                  "Filter document on these page numbers. Use empty list to get all pages.",
+                items: {
+                  type: "integer",
+                },
+                title: "F3 Selected Pages",
+                type: "array",
+              },
+            },
+            required: ["f1_http_url"],
+            title: "ReadDocV2Request",
+            type: "object",
+          },
+          ValidationError: {
+            properties: {
+              loc: {
+                items: {
+                  anyOf: [
+                    {
+                      type: "string",
+                    },
+                    {
+                      type: "integer",
+                    },
+                  ],
+                },
+                title: "Location",
+                type: "array",
+              },
+              msg: {
+                title: "Message",
+                type: "string",
+              },
+              type: {
+                title: "Error Type",
+                type: "string",
+              },
+            },
+            required: ["loc", "msg", "type"],
+            title: "ValidationError",
+            type: "object",
+          },
+        },
+      },
+    }),
+    builtin: true,
+    authType: "none",
+    authLocation: "",
+    authHeader: "",
+    authToken: "",
+    usingProxy: true,
+  },
+  duckDuckGoLite: {
+    id: "duckDuckGoLite",
+    createdAt: Date.now(),
+    title: "DuckDuckGo 互联网搜索，允许AI进行互联网检索",
+    version: "v1.0.0",
+    content: JSON.stringify({
+      openapi: "3.1.0",
+      info: {
+        title: "duckduckgo lite",
+        description:
+          "a search engine. useful for when you need to answer questions about current events. input should be a search query.",
+        version: "v1.0.0",
+      },
+      servers: [
+        {
+          url: "https://lite.duckduckgo.com",
+        },
+      ],
+      paths: {
+        "/lite/": {
+          post: {
+            operationId: "DuckDuckGoLiteSearch",
+            description:
+              "a search engine. useful for when you need to answer questions about current events. input should be a search query.",
+            deprecated: false,
+            parameters: [
+              {
+                name: "q",
+                in: "query",
+                required: true,
+                description: "keywords for query.",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "s",
+                in: "query",
+                description: "can be `0`",
+                schema: {
+                  type: "number",
+                },
+              },
+              {
+                name: "o",
+                in: "query",
+                description: "can be `json`",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "api",
+                in: "query",
+                description: "can be `d.js`",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "kl",
+                in: "query",
+                description:
+                  "wt-wt, us-en, uk-en, ru-ru, etc. Defaults to `wt-wt`.",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "bing_market",
+                in: "query",
+                description:
+                  "wt-wt, us-en, uk-en, ru-ru, etc. Defaults to `wt-wt`.",
+                schema: {
+                  type: "string",
+                },
+              },
+            ],
+          },
+        },
+      },
+      components: {
+        schemas: {},
+      },
+    }),
+    builtin: true,
+    authType: "none",
+    authLocation: "",
+    authHeader: "",
+    authToken: "",
+    usingProxy: true,
+  },
+  arxivSearch: {
+    id: "arxivSearch",
+    createdAt: Date.now(),
+    title: "Arxiv 搜索，允许AI搜索并获取Arxiv文章信息",
+    version: "v1.0.0",
+    content: JSON.stringify({
+      openapi: "3.1.0",
+      info: {
+        title: "arxiv search",
+        description: "Run Arxiv search and get the article information.",
+        version: "v1.0.0",
+      },
+      servers: [
+        {
+          url: "https://export.arxiv.org",
+        },
+      ],
+      paths: {
+        "/api/query": {
+          get: {
+            operationId: "ArxivSearch",
+            description: "Run Arxiv search and get the article information.",
+            deprecated: false,
+            parameters: [
+              {
+                name: "search_query",
+                in: "query",
+                required: true,
+                description:
+                  "same as the search_query parameter rules of the arxiv API.",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "sortBy",
+                in: "query",
+                description:
+                  "can be `relevance`, `lastUpdatedDate`, `submittedDate`.",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "sortOrder",
+                in: "query",
+                description: "can be either `ascending` or `descending`.",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                name: "start",
+                in: "query",
+                description: "the index of the first returned result.",
+                schema: {
+                  type: "number",
+                },
+              },
+              {
+                name: "max_results",
+                in: "query",
+                description: "the number of results returned by the query.",
+                schema: {
+                  type: "number",
+                },
+              },
+            ],
+          },
+        },
+      },
+      components: {
+        schemas: {},
+      },
+    }),
+    builtin: true,
+    authType: "none",
+    authLocation: "",
+    authHeader: "",
+    authToken: "",
+    usingProxy: true,
+  },
+  codeInterpreter: {
+    id: "codeInterpreter",
+    createdAt: Date.now(),
+    title: "动态编码器，允许AI运行Python代码并返回结果",
+    version: "1.0.0",
+    content: JSON.stringify({
+      openapi: "3.1.0",
+      info: {
+        title: "CodeInterpreter",
+        version: "1.0.0",
+      },
+      servers: [
+        {
+          url: "https://code.leez.tech",
+        },
+      ],
+      paths: {
+        "/runcode": {
+          post: {
+            operationId: "CodeInterpreter",
+            "x-openai-isConsequential": false,
+            summary: "Run a given Python program and return the output.",
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["code", "languageType", "variables"],
+                    properties: {
+                      code: {
+                        type: "string",
+                        description: "The Python code to execute",
+                      },
+                      languageType: {
+                        type: "string",
+                        description: "value is `python`",
+                      },
+                      variables: {
+                        type: "object",
+                        description: "value is empty dict: `{}`",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    builtin: true,
+    authType: "none",
+    authLocation: "",
+    authHeader: "",
+    authToken: "",
+    usingProxy: true,
+  },
+};
+
 export const DEFAULT_PLUGIN_STATE = {
-  plugins: {} as Record<string, Plugin>,
+  plugins: {
+    ...PREDEFINED_PLUGINS,
+  } as Record<string, Plugin>,
 };
 
 export const usePluginStore = createPersistStore(

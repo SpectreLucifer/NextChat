@@ -21,7 +21,6 @@ import {
   DEFAULT_SYSTEM_TEMPLATE,
   GEMINI_SUMMARIZE_MODEL,
   KnowledgeCutOffDate,
-  MCP_SYSTEM_TEMPLATE,
   MCP_TOOLS_TEMPLATE,
   ServiceProvider,
   StoreKey,
@@ -37,6 +36,7 @@ import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
 import { executeMcpAction, getAllTools } from "../mcp/actions";
 import { extractMcpJson, isMcpJson } from "../mcp/utils";
+import { getServerSideConfig } from "../config/server";
 
 const localStorage = safeLocalStorage();
 
@@ -199,14 +199,18 @@ function fillTemplateWith(input: string, modelConfig: ModelConfig) {
 }
 
 async function getMcpSystemPrompt(): Promise<string> {
-  const tools = await getAllTools();
+  const Serverconfig = getServerSideConfig();
+  const config = useAppConfig.getState();
+  // 如果MCP未启用，返回空字符串
+  if (!Serverconfig.enableMcp) {
+    return "";
+  }
 
+  const tools = await getAllTools();
   let toolsStr = "";
 
   tools.forEach((i) => {
-    // error client has no tools
     if (!i.tools) return;
-
     toolsStr += MCP_TOOLS_TEMPLATE.replace(
       "{{ clientId }}",
       i.clientId,
@@ -216,11 +220,66 @@ async function getMcpSystemPrompt(): Promise<string> {
     );
   });
 
-  return MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
+  return MCP_TOOLS_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
 }
 
+const INSTRUCTION_MASK = {
+  id: "instruction",
+  avatar: "1f4d1",
+  name: "使用说明",
+  context: [
+    {
+      id: "info-0",
+      role: "assistant" as const,
+      content:
+        "## 首先你需要完成初始设置\n" +
+        "- 你应当设置所需使用的LLM对应提供商的api key和端点，并选择对话摘要模型\n" +
+        "- 点击[这里](/#/settings)修改设置\n\n" +
+        "## 使用说明\n" +
+        "*大致使用说明如下：*\n" +
+        "- 对话框上的设置项可以修改当前对话实例参数、模型类别、主题、面具模板，也可以上传图片、启用插件、调用提示词模板、清除上下文。\n" +
+        "- 具体用法详见项目地址：https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web\n" +
+        "- 右上角有全屏按钮\n\n" +
+        "*模型介绍概要：*\n" +
+        "- gpt4o、claude-3.5系列适用于大多数通用复杂任务\n" +
+        "- o1系列适用于复杂逻辑推理任务\n" +
+        "- o1系列的详细介绍详见：https://openai.com/index/introducing-openai-o1-preview/\n\n" +
+        "*备注内容：*\n" +
+        "- 记得通览一遍设置，调整一下默认设置方便使用\n" +
+        "- 使用较小的模型作为对话摘要模型即可，以避免不必要的资源浪费",
+      date: "",
+    },
+  ],
+  modelConfig: {
+    model: "gpt-4o",
+    temperature: 1,
+    max_tokens: 4000,
+    presence_penalty: 0,
+    frequency_penalty: 0,
+    sendMemory: true,
+    historyMessageCount: 8,
+    compressMessageLengthThreshold: 1000,
+  },
+  lang: "cn" as const,
+  builtin: true,
+  createdAt: 1699899480504,
+};
+
 const DEFAULT_CHAT_STATE = {
-  sessions: [createEmptySession()],
+  sessions: [
+    (() => {
+      const session = createEmptySession();
+      session.mask = {
+        ...INSTRUCTION_MASK,
+        modelConfig: {
+          ...session.mask.modelConfig,
+          ...INSTRUCTION_MASK.modelConfig,
+        },
+      };
+      session.topic = INSTRUCTION_MASK.name;
+      return session;
+    })(),
+  ],
   currentSessionIndex: 0,
   lastInput: "",
 };
@@ -245,7 +304,7 @@ export const useChatStore = createPersistStore(
 
         newSession.topic = currentSession.topic;
         // 深拷贝消息
-        newSession.messages = currentSession.messages.map(msg => ({
+        newSession.messages = currentSession.messages.map((msg) => ({
           ...msg,
           id: nanoid(), // 生成新的消息 ID
         }));
@@ -554,29 +613,28 @@ export const useChatStore = createPersistStore(
         const mcpSystemPrompt = await getMcpSystemPrompt();
 
         var systemPrompts: ChatMessage[] = [];
-        systemPrompts = shouldInjectSystemPrompts
-          ? [
-              createMessage({
-                role: "system",
-                content:
-                  fillTemplateWith("", {
-                    ...modelConfig,
-                    template: DEFAULT_SYSTEM_TEMPLATE,
-                  }) + mcpSystemPrompt,
-              }),
-            ]
-          : [
-              createMessage({
-                role: "system",
-                content: mcpSystemPrompt,
-              }),
-            ];
         if (shouldInjectSystemPrompts) {
-          console.log(
-            "[Global System Prompt] ",
-            systemPrompts.at(0)?.content ?? "empty",
-          );
+          // 当启用系统提示词时，将MCP提示词附加到系统提示词后
+          systemPrompts = [
+            createMessage({
+              role: "system",
+              content:
+                fillTemplateWith("", {
+                  ...modelConfig,
+                  template: DEFAULT_SYSTEM_TEMPLATE,
+                }) + mcpSystemPrompt,
+            }),
+          ];
+        } else if (mcpSystemPrompt) {
+          // 当只有MCP启用时，只添加MCP系统提示词
+          systemPrompts = [
+            createMessage({
+              role: "system",
+              content: mcpSystemPrompt,
+            }),
+          ];
         }
+
         const memoryPrompt = get().getMemoryPrompt();
         // long term memory
         const shouldSendLongTermMemory =

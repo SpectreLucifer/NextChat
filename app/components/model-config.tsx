@@ -1,3 +1,4 @@
+import React from "react"; //此处修改#1
 import { ServiceProvider } from "@/app/constant";
 import { ModalConfigValidator, ModelConfig } from "../store";
 
@@ -14,6 +15,15 @@ export function ModelConfigList(props: {
   updateConfig: (updater: (config: ModelConfig) => void) => void;
 }) {
   const allModels = useAllModels();
+  React.useEffect(() => {
+    //此处修改#1
+    if (!props.modelConfig.compressModel) {
+      props.updateConfig((config) => {
+        config.compressModel = "gpt-4o-mini";
+        config.compressProviderName = "OpenAI";
+      });
+    }
+  }, []); //此处修改#1
   const groupModels = groupBy(
     allModels.filter((v) => v.available),
     "provider.providerName",

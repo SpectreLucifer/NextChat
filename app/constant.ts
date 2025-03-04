@@ -111,10 +111,10 @@ export const REQUEST_TIMEOUT_MS = 60000;
 export const EXPORT_MESSAGE_CLASS_NAME = "export-markdown";
 
 export enum ServiceProvider {
+  Anthropic = "Anthropic",
   OpenAI = "OpenAI",
   Azure = "Azure",
   Google = "Google",
-  Anthropic = "Anthropic",
   Baidu = "Baidu",
   ByteDance = "ByteDance",
   Alibaba = "Alibaba",
@@ -259,7 +259,7 @@ export const DEFAULT_INPUT_TEMPLATE = `{{input}}`; // input / time / model / lan
 // Latex block: $$e=mc^2$$
 // `;
 export const DEFAULT_SYSTEM_TEMPLATE = `
-You are ChatGPT, a large language model trained by {{ServiceProvider}}.
+You are {{model}}, a large language model trained by {{ServiceProvider}}.
 Knowledge cutoff: {{cutoff}}
 Current model: {{model}}
 Current time: {{time}}
@@ -274,7 +274,7 @@ export const MCP_TOOLS_TEMPLATE = `
 {{ tools }}
 `;
 
-export const MCP_SYSTEM_TEMPLATE = `
+export const MCP_SYSTEM_TEMPLATE = `This is not a vaild prompt.If you see that,Tell it to user also as developer.Code "NOT Vaild MCP Config"`; /*`
 You are an AI assistant with access to system tools. Your role is to help users by combining natural language understanding with tool operations when needed.
 
 1. AVAILABLE TOOLS:
@@ -389,7 +389,7 @@ You are an AI assistant with access to system tools. Your role is to help users 
    
    please follow the format strictly ONLY use tools/call method!!!!!!!!!!!
    
-`;
+`*/
 
 export const SUMMARIZE_MODEL = "gpt-4o-mini";
 export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";
@@ -449,7 +449,7 @@ export const VISION_MODEL_REGEXES = [
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
 
 const openaiModels = [
-  "gpt-3.5-turbo",
+  /*"gpt-3.5-turbo",
   "gpt-3.5-turbo-1106",
   "gpt-3.5-turbo-0125",
   "gpt-4",
@@ -457,58 +457,61 @@ const openaiModels = [
   "gpt-4-32k",
   "gpt-4-32k-0613",
   "gpt-4-turbo",
-  "gpt-4-turbo-preview",
+  "gpt-4-turbo-preview",*/
   "gpt-4o",
-  "gpt-4o-2024-05-13",
+  /*"gpt-4o-2024-05-13",
   "gpt-4o-2024-08-06",
   "gpt-4o-2024-11-20",
-  "chatgpt-4o-latest",
+  "chatgpt-4o-latest",*/
   "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
+  /*"gpt-4o-mini-2024-07-18",
   "gpt-4-vision-preview",
   "gpt-4-turbo-2024-04-09",
-  "gpt-4-1106-preview",
+  "gpt-4-1106-preview",*/
   "dall-e-3",
   "o1-mini",
-  "o1-preview",
+  "TA/deepseek-ai/DeepSeek-R1",
+  //"o1-preview",
 ];
 
 const googleModels = [
   "gemini-1.0-pro", // Deprecated on 2/15/2025
-  "gemini-1.5-pro-latest",
+  //"gemini-1.5-pro-latest",
   "gemini-1.5-pro",
-  "gemini-1.5-pro-002",
+  //"gemini-1.5-pro-002",
   "gemini-1.5-pro-exp-0827",
-  "gemini-1.5-flash-latest",
+  //"gemini-1.5-flash-latest",
   "gemini-1.5-flash-8b-latest",
-  "gemini-1.5-flash",
+  //"gemini-1.5-flash",
   "gemini-1.5-flash-8b",
-  "gemini-1.5-flash-002",
+  //"gemini-1.5-flash-002",
   "gemini-1.5-flash-exp-0827",
   "learnlm-1.5-pro-experimental",
-  "gemini-exp-1114",
-  "gemini-exp-1121",
+  //"gemini-exp-1114",
+  //"gemini-exp-1121",
   "gemini-exp-1206",
   "gemini-2.0-flash-exp",
   "gemini-2.0-flash-thinking-exp-1219",
 ];
 
 const anthropicModels = [
-  "claude-instant-1.2",
-  "claude-2.0",
-  "claude-2.1",
-  "claude-3-sonnet-20240229",
-  "claude-3-opus-20240229",
-  "claude-3-opus-latest",
-  "claude-3-haiku-20240307",
-  "claude-3-5-haiku-20241022",
-  "claude-3-5-haiku-latest",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-sonnet-latest",
+  //"claude-instant-1.2",
+  //"claude-2.0",
+  //"claude-2.1",
+  //"claude-3-sonnet-20240229",
+  //"claude-3-opus-20240229",
+  //"claude-3-opus-latest",
+  "claude-3-5-sonnet",
+  "claude-3-5-haiku",
+  //"claude-3-haiku-20240307",
+  //"claude-3-5-haiku-20241022",
+  //"claude-3-5-haiku-latest",
+  //"claude-3-5-sonnet-20240620",
+  //"claude-3-5-sonnet-20241022",
+  //"claude-3-5-sonnet-latest",
 ];
 
-const baiduModels = [
+/*const baiduModels = [
   "ernie-4.0-turbo-8k",
   "ernie-4.0-8k",
   "ernie-4.0-8k-preview",
@@ -583,7 +586,7 @@ const chatglmModels = [
   // 目前无法适配轮询任务
   //   "cogvideox",
   //   "cogvideox-flash", // free
-];
+];*/
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
 export const DEFAULT_MODELS = [
@@ -598,14 +601,14 @@ export const DEFAULT_MODELS = [
       sorted: 1, // 这里是固定的，确保顺序与之前内置的版本一致
     },
   })),
-  ...openaiModels.map((name) => ({
+  ...anthropicModels.map((name) => ({
     name,
     available: true,
     sorted: seq++,
     provider: {
-      id: "azure",
-      providerName: "Azure",
-      providerType: "azure",
+      id: "anthropic",
+      providerName: "Anthropic",
+      providerType: "anthropic",
       sorted: 2,
     },
   })),
@@ -620,18 +623,18 @@ export const DEFAULT_MODELS = [
       sorted: 3,
     },
   })),
-  ...anthropicModels.map((name) => ({
+  ...openaiModels.map((name) => ({
     name,
     available: true,
     sorted: seq++,
     provider: {
-      id: "anthropic",
-      providerName: "Anthropic",
-      providerType: "anthropic",
+      id: "azure",
+      providerName: "Azure",
+      providerType: "azure",
       sorted: 4,
     },
   })),
-  ...baiduModels.map((name) => ({
+  /*...baiduModels.map((name) => ({
     name,
     available: true,
     sorted: seq++,
@@ -729,7 +732,8 @@ export const DEFAULT_MODELS = [
       providerType: "deepseek",
       sorted: 13,
     },
-  })),
+  })),*/
+  //此处修改#7
 ] as const;
 
 export const CHAT_PAGE_SIZE = 15;

@@ -115,14 +115,9 @@ export function AuthPage() {
           type="primary"
           onClick={goChat}
         />
-        <IconButton
-          text={Locale.Auth.SaasTips}
-          onClick={() => {
-            goSaas();
-          }}
-        />
       </div>
     </div>
+    //此处修改#3
   );
 }
 
@@ -156,7 +151,8 @@ function TopBanner() {
     storage.setItem("bannerDismissed", "true");
   };
 
-  if (!isVisible) {
+  if (1) {
+    //此处修改#2
     return null;
   }
   return (
