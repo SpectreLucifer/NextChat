@@ -484,6 +484,7 @@ const openaiModels = [
   "gpt-4-turbo",
   "gpt-4-turbo-preview",*/
   "gpt-4o",
+  "gpt-4.5-preview",
   /*"gpt-4o-2024-05-13",
   "gpt-4o-2024-08-06",
   "gpt-4o-2024-11-20",
@@ -495,7 +496,6 @@ const openaiModels = [
   "gpt-4-1106-preview",*/
   "dall-e-3",
   "o1-mini",
-  "TA/deepseek-ai/DeepSeek-R1",
   //"o1-preview",
   "o3-mini",
 ];
@@ -533,6 +533,7 @@ const anthropicModels = [
   //"claude-3-sonnet-20240229",
   //"claude-3-opus-20240229",
   //"claude-3-opus-latest",
+  "claude-3-7-sonnet-latest",
   "claude-3-5-sonnet",
   "claude-3-5-haiku",
   //"claude-3-haiku-20240307",
@@ -598,9 +599,14 @@ const iflytekModels = [
   "generalv3.5",
   "4.0Ultra",
 ];
-
-const deepseekModels = ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"];
-
+*/
+const deepseekModels = [
+  "TA/deepseek-ai/DeepSeek-R1",
+  "deepseek-chat",
+  "deepseek-coder",
+  "deepseek-reasoner",
+];
+/*
 const xAIModes = [
   "grok-beta",
   "grok-2",
@@ -630,7 +636,7 @@ const chatglmModels = [
   // 目前无法适配轮询任务
   //   "cogvideox",
   //   "cogvideox-flash", // free
-];*/
+];
 
 const siliconflowModels = [
   "Qwen/Qwen2.5-7B-Instruct",
@@ -648,6 +654,7 @@ const siliconflowModels = [
   "Pro/deepseek-ai/DeepSeek-R1",
   "Pro/deepseek-ai/DeepSeek-V3",
 ];
+*/
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
 export const DEFAULT_MODELS = [
@@ -659,7 +666,7 @@ export const DEFAULT_MODELS = [
       id: "openai",
       providerName: "OpenAI",
       providerType: "openai",
-      sorted: 1, // 这里是固定的，确保顺序与之前内置的版本一致
+      sorted: 3, // 这里是固定的，确保顺序与之前内置的版本一致
     },
   })),
   ...anthropicModels.map((name) => ({
@@ -681,7 +688,7 @@ export const DEFAULT_MODELS = [
       id: "google",
       providerName: "Google",
       providerType: "google",
-      sorted: 3,
+      sorted: 4,
     },
   })),
   ...openaiModels.map((name) => ({
@@ -692,7 +699,7 @@ export const DEFAULT_MODELS = [
       id: "azure",
       providerName: "Azure",
       providerType: "azure",
-      sorted: 4,
+      sorted: 5,
     },
   })),
   /*...baiduModels.map((name) => ({
@@ -782,7 +789,7 @@ export const DEFAULT_MODELS = [
       providerType: "chatglm",
       sorted: 12,
     },
-  })),
+  })),*/
   ...deepseekModels.map((name) => ({
     name,
     available: true,
@@ -791,10 +798,10 @@ export const DEFAULT_MODELS = [
       id: "deepseek",
       providerName: "DeepSeek",
       providerType: "deepseek",
-      sorted: 13,
+      sorted: 1,
     },
   })),
-  })),
+  /*
   ...siliconflowModels.map((name) => ({
     name,
     available: true,

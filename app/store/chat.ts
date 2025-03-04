@@ -471,14 +471,41 @@ export const useChatStore = createPersistStore(
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
+        // 保存原始内容用于历史记录
+        const originalContent = content;
+
+        // 准备发送给模型的内容（添加提示语）
+        let promptedContent = isMcpResponse
+          ? content
+          : "你必须根据系统提示回答用户请求，用户输入如下：\n\n" + content;
+
         // MCP Response no need to fill template
         let mContent: string | MultimodalContent[] = isMcpResponse
           ? content
-          : fillTemplateWith(content, modelConfig);
+          : fillTemplateWith(promptedContent, modelConfig); // 使用添加了提示语的内容
+
+        // 为历史记录准备的内容（不包含提示语）
+        let displayContent: string | MultimodalContent[] = isMcpResponse
+          ? content
+          : fillTemplateWith(originalContent, modelConfig); // 原始内容用于显示
 
         if (!isMcpResponse && attachImages && attachImages.length > 0) {
+          // 发送给模型的内容（包含提示语）
           mContent = [
-            ...(content ? [{ type: "text" as const, text: content }] : []),
+            ...(content
+              ? [{ type: "text" as const, text: promptedContent }]
+              : []),
+            ...attachImages.map((url) => ({
+              type: "image_url" as const,
+              image_url: { url },
+            })),
+          ];
+
+          // 历史记录显示的内容（不包含提示语）
+          displayContent = [
+            ...(content
+              ? [{ type: "text" as const, text: originalContent }]
+              : []),
             ...attachImages.map((url) => ({
               type: "image_url" as const,
               image_url: { url },
@@ -488,7 +515,7 @@ export const useChatStore = createPersistStore(
 
         let userMessage: ChatMessage = createMessage({
           role: "user",
-          content: mContent,
+          content: mContent, // 发送给模型的内容（包含提示语）
           isMcpResponse,
         });
 
@@ -503,11 +530,11 @@ export const useChatStore = createPersistStore(
         const sendMessages = recentMessages.concat(userMessage);
         const messageIndex = session.messages.length + 1;
 
-        // save user's and bot's message
+        // save user's and bot's message (使用不包含提示语的内容)
         get().updateTargetSession(session, (session) => {
           const savedUserMessage = {
             ...userMessage,
-            content: mContent,
+            content: displayContent, // 历史记录中使用不含提示语的内容
           };
           session.messages = session.messages.concat([
             savedUserMessage,
